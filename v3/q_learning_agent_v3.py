@@ -75,7 +75,7 @@ async def update_loop():
         EPSILON = max(0.1, EPSILON * 0.995)
     
     for agent_idx in range(NUM_AGENTS):
-        print(f"\nOptimal Policy for Agent {agent_idx + 1} (V2.1):")
+        print(f"\nOptimal Policy for Agent {agent_idx + 1} (V3):")
         policy = np.chararray((rows, cols), itemsize=5)
         for i in range(rows):
             for j in range(cols):
