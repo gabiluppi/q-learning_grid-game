@@ -39,6 +39,52 @@ def draw_grid(agent_positions):
                                 CELL_SIZE - 20, CELL_SIZE - 20)
         pygame.draw.ellipse(screen, agent_colors[idx], agent_rect)
     pygame.display.flip()
+    
+def draw_policy_grid():
+    screen.fill((200, 200, 200))
+    for i in range(rows):
+        for j in range(cols):
+            rect = pygame.Rect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(screen, colors[grid[i][j]], rect)
+            pygame.draw.rect(screen, (0, 0, 0), rect, 1)
+            if grid[i][j] in ['B', 'X', 'G']:
+                continue
+            for agent_idx in range(NUM_AGENTS):
+                best_action = actions[np.argmax(q_tables[agent_idx][i, j])]
+                center_x, center_y = j * CELL_SIZE + CELL_SIZE // 2, i * CELL_SIZE + CELL_SIZE // 2
+                arrow_length = CELL_SIZE // 3
+                arrow_head_size = 10
+                if best_action == 'north':
+                    start = (center_x, center_y + arrow_length // 2)
+                    end = (center_x, center_y - arrow_length // 2)
+                    head = [(center_x, center_y - arrow_length // 2 - arrow_head_size),
+                            (center_x - arrow_head_size // 2, center_y - arrow_length // 2),
+                            (center_x + arrow_head_size // 2, center_y - arrow_length // 2)]
+                elif best_action == 'south':
+                    start = (center_x, center_y - arrow_length // 2)
+                    end = (center_x, center_y + arrow_length // 2)
+                    head = [(center_x, center_y + arrow_length // 2 + arrow_head_size),
+                            (center_x - arrow_head_size // 2, center_y + arrow_length // 2),
+                            (center_x + arrow_head_size // 2, center_y + arrow_length // 2)]
+                elif best_action == 'east':
+                    start = (center_x - arrow_length // 2, center_y)
+                    end = (center_x + arrow_length // 2, center_y)
+                    head = [(center_x + arrow_length // 2 + arrow_head_size, center_y),
+                            (center_x + arrow_length // 2, center_y - arrow_head_size // 2),
+                            (center_x + arrow_length // 2, center_y + arrow_head_size // 2)]
+                else:  # west
+                    start = (center_x + arrow_length // 2, center_y)
+                    end = (center_x - arrow_length // 2, center_y)
+                    head = [(center_x - arrow_length // 2 - arrow_head_size, center_y),
+                            (center_x - arrow_length // 2, center_y - arrow_head_size // 2),
+                            (center_x - arrow_length // 2, center_y + arrow_head_size // 2)]
+                offset = (agent_idx - NUM_AGENTS // 2) * (CELL_SIZE // (NUM_AGENTS + 1))
+                start = (start[0] + offset, start[1])
+                end = (end[0] + offset, end[1])
+                head = [(x + offset, y) for x, y in head]
+                pygame.draw.line(screen, agent_colors[agent_idx], start, end, 3)
+                pygame.draw.polygon(screen, agent_colors[agent_idx], head)
+    pygame.display.flip()
 
 async def update_loop():
     global EPSILON
@@ -73,23 +119,14 @@ async def update_loop():
             draw_grid(agent_states)
             await asyncio.sleep(MOVE_DELAY)
         EPSILON = max(0.1, EPSILON * 0.995)
-    
-    for agent_idx in range(NUM_AGENTS):
-        print(f"\nOptimal Policy for Agent {agent_idx + 1} (V3):")
-        policy = np.chararray((rows, cols), itemsize=5)
-        for i in range(rows):
-            for j in range(cols):
-                if grid[i][j] == 'B':
-                    policy[i, j] = 'BLOCK'
-                elif grid[i][j] == 'G':
-                    policy[i, j] = 'GOAL'
-                elif grid[i][j] == 'X':
-                    policy[i, j] = 'NONE'
-                else:
-                    best_action = actions[np.argmax(q_tables[agent_idx][i, j])]
-                    policy[i, j] = best_action.upper()[:5]
-        for row in policy:
-            print(' '.join(row.astype(str)))
+        
+    draw_policy_grid()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+        await asyncio.sleep(0.1)
 
 async def main():
     setup()
