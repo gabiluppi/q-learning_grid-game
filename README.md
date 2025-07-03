@@ -17,8 +17,7 @@ This project implements a Q-Learning algorithm for a grid-based navigation game 
 q-learning-grid-game/
 ├── config.py                    # Shared configuration parameters
 ├── v1/                         # Version 1 (no additional penalty)
-│   ├── q_learning_multi_agent_v1.py
-│   └── README.md
+│   └── q_learning_multi_agent_v1.py
 ├── v2/                         # Version 2 (with step penalty)
 │   ├── q_learning_multi_agent_v2.py
 │   └── README.md
