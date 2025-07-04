@@ -112,9 +112,7 @@ async def update_loop():
                 row, col = agent_states[agent_idx]
                 next_row, next_col = next_state
                 action_idx = actions.index(action)
-                q_tables[agent_idx][row, col, action_idx] = \
-                    (1 - ALPHA) * q_tables[agent_idx][row, col, action_idx] + \
-                    ALPHA * (reward + GAMMA * np.max(q_tables[agent_idx][next_row, next_col]))
+                q_tables[agent_idx][row, col, action_idx] = (reward + GAMMA * np.max(q_tables[agent_idx][next_row, next_col]))
                 agent_states[agent_idx] = next_state
             draw_grid(agent_states)
             await asyncio.sleep(MOVE_DELAY)
