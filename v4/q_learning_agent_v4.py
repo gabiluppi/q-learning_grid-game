@@ -14,7 +14,7 @@ epsilon = EPSILON
 
 q_table = np.zeros((rows, cols, len(actions)))
 start_pos = get_start_pos()
-agent_color = (255, 0, 0)  # Single agent color (red)
+agent_color = (0, 0, 255)  # Single agent color (blue)
 
 def choose_action(state):
     if random.random() < epsilon:
@@ -27,7 +27,7 @@ def setup():
     global screen
     pygame.init()
     screen = pygame.display.set_mode((width, height))
-    pygame.display.set_caption("V1: Single-Agent Q-Learning")
+    pygame.display.set_caption("V4: Single-Agent Q-Learning")
     draw_grid(start_pos)
 
 def draw_grid(agent_position):
@@ -86,11 +86,14 @@ def draw_policy_grid():
 
 async def update_loop():
     global epsilon
+    success_count = 0
+    steps_per_episode = []
     for episode in range(EPISODES):
         print(f'starting episode {episode}')
         agent_state = start_pos
         draw_grid(agent_state)
         await asyncio.sleep(MOVE_DELAY)
+        steps = 0
         while grid[agent_state[0]][agent_state[1]] != 'G':
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -106,7 +109,16 @@ async def update_loop():
             agent_state = next_state
             draw_grid(agent_state)
             await asyncio.sleep(MOVE_DELAY)
-       # epsilon = max(0.1, epsilon * 0.995)
+            steps += 1
+        steps_per_episode.append(steps)
+        if grid[agent_state[0]][agent_state[1]] == 'G':
+            success_count += 1
+        print(f'Episode {episode} completed in {steps} steps')
+       
+    convergence_mean = sum(steps_per_episode) / len(steps_per_episode) if steps_per_episode else 0
+    success_rate = (success_count / EPISODES) * 100
+    print(f'Convergência média: {convergence_mean} passos')
+    print(f'Taxa de sucesso: {success_rate}%')
 
     draw_policy_grid()
     while True:

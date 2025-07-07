@@ -6,41 +6,39 @@ import platform
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import NUM_AGENTS, CELL_SIZE, GAMMA, ALPHA, EPSILON, EPISODES, MOVE_DELAY, FPS
-from utils.grid_utils import grid, rows, cols, actions, action_map, rewards, colors, agent_colors, get_start_pos, is_valid_move
-
+from config import CELL_SIZE, GAMMA, ALPHA, EPSILON, EPISODES, MOVE_DELAY, FPS
+from utils.grid_utils import grid, rows, cols, actions, action_map, rewards, colors, get_start_pos, is_valid_move
 
 width, height = cols * CELL_SIZE, rows * CELL_SIZE
-epsilon = EPSILON
+epsilon = EPSILON  # Inicia em 0.9 com decaimento
 
-q_tables = [np.zeros((rows, cols, len(actions))) for _ in range(NUM_AGENTS)]
+q_table = np.zeros((rows, cols, len(actions)))  # Tabela Q para um único agente
 start_pos = get_start_pos()
 
-def choose_action(state, agent_idx):
+def choose_action(state):
     if random.random() < epsilon:
         return random.choice(actions)
     else:
         row, col = state
-        return actions[np.argmax(q_tables[agent_idx][row, col])]
+        return actions[np.argmax(q_table[row, col])]
 
 def setup():
     global screen
     pygame.init()
     screen = pygame.display.set_mode((width, height))
-    pygame.display.set_caption("V1: Multi-Agent Q-Learning (No Additional Penalty)")
-    draw_grid([start_pos] * NUM_AGENTS)
+    pygame.display.set_caption("V1: Single-Agent Q-Learning")
+    draw_grid(start_pos)
 
-def draw_grid(agent_positions):
+def draw_grid(agent_position):
     screen.fill((200, 200, 200))
     for i in range(rows):
         for j in range(cols):
             rect = pygame.Rect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE)
             pygame.draw.rect(screen, colors[grid[i][j]], rect)
             pygame.draw.rect(screen, (0, 0, 0), rect, 1)
-    for idx, (row, col) in enumerate(agent_positions):
-        agent_rect = pygame.Rect(col * CELL_SIZE + 10, row * CELL_SIZE + 10, 
-                                CELL_SIZE - 20, CELL_SIZE - 20)
-        pygame.draw.ellipse(screen, agent_colors[idx], agent_rect)
+    agent_rect = pygame.Rect(agent_position[1] * CELL_SIZE + 10, agent_position[0] * CELL_SIZE + 10, 
+                            CELL_SIZE - 20, CELL_SIZE - 20)
+    pygame.draw.ellipse(screen, (0, 0, 255), agent_rect)  # Agente azul
     pygame.display.flip()
 
 def draw_policy_grid():
@@ -52,68 +50,76 @@ def draw_policy_grid():
             pygame.draw.rect(screen, (0, 0, 0), rect, 1)
             if grid[i][j] in ['B', 'X', 'G']:
                 continue
-            for agent_idx in range(NUM_AGENTS):
-                best_action = actions[np.argmax(q_tables[agent_idx][i, j])]
-                center_x, center_y = j * CELL_SIZE + CELL_SIZE // 2, i * CELL_SIZE + CELL_SIZE // 2
-                arrow_length = CELL_SIZE // 3
-                arrow_head_size = 10
-                if best_action == 'north':
-                    start = (center_x, center_y + arrow_length // 2)
-                    end = (center_x, center_y - arrow_length // 2)
-                    head = [(center_x, center_y - arrow_length // 2 - arrow_head_size),
-                            (center_x - arrow_head_size // 2, center_y - arrow_length // 2),
-                            (center_x + arrow_head_size // 2, center_y - arrow_length // 2)]
-                elif best_action == 'south':
-                    start = (center_x, center_y - arrow_length // 2)
-                    end = (center_x, center_y + arrow_length // 2)
-                    head = [(center_x, center_y + arrow_length // 2 + arrow_head_size),
-                            (center_x - arrow_head_size // 2, center_y + arrow_length // 2),
-                            (center_x + arrow_head_size // 2, center_y + arrow_length // 2)]
-                elif best_action == 'east':
-                    start = (center_x - arrow_length // 2, center_y)
-                    end = (center_x + arrow_length // 2, center_y)
-                    head = [(center_x + arrow_length // 2 + arrow_head_size, center_y),
-                            (center_x + arrow_length // 2, center_y - arrow_head_size // 2),
-                            (center_x + arrow_length // 2, center_y + arrow_head_size // 2)]
-                else:  # west
-                    start = (center_x + arrow_length // 2, center_y)
-                    end = (center_x - arrow_length // 2, center_y)
-                    head = [(center_x - arrow_length // 2 - arrow_head_size, center_y),
-                            (center_x - arrow_length // 2, center_y - arrow_head_size // 2),
-                            (center_x - arrow_length // 2, center_y + arrow_head_size // 2)]
-                offset = (agent_idx - NUM_AGENTS // 2) * (CELL_SIZE // (NUM_AGENTS + 1))
-                start = (start[0] + offset, start[1])
-                end = (end[0] + offset, end[1])
-                head = [(x + offset, y) for x, y in head]
-                pygame.draw.line(screen, agent_colors[agent_idx], start, end, 3)
-                pygame.draw.polygon(screen, agent_colors[agent_idx], head)
+            best_action = actions[np.argmax(q_table[i, j])]
+            center_x, center_y = j * CELL_SIZE + CELL_SIZE // 2, i * CELL_SIZE + CELL_SIZE // 2
+            arrow_length = CELL_SIZE // 3
+            arrow_head_size = 10
+            if best_action == 'north':
+                start = (center_x, center_y + arrow_length // 2)
+                end = (center_x, center_y - arrow_length // 2)
+                head = [(center_x, center_y - arrow_length // 2 - arrow_head_size),
+                        (center_x - arrow_head_size // 2, center_y - arrow_length // 2),
+                        (center_x + arrow_head_size // 2, center_y - arrow_length // 2)]
+            elif best_action == 'south':
+                start = (center_x, center_y - arrow_length // 2)
+                end = (center_x, center_y + arrow_length // 2)
+                head = [(center_x, center_y + arrow_length // 2 + arrow_head_size),
+                        (center_x - arrow_head_size // 2, center_y + arrow_length // 2),
+                        (center_x + arrow_head_size // 2, center_y + arrow_length // 2)]
+            elif best_action == 'east':
+                start = (center_x - arrow_length // 2, center_y)
+                end = (center_x + arrow_length // 2, center_y)
+                head = [(center_x + arrow_length // 2 + arrow_head_size, center_y),
+                        (center_x + arrow_length // 2, center_y - arrow_head_size // 2),
+                        (center_x + arrow_length // 2, center_y + arrow_head_size // 2)]
+            else:  # west
+                start = (center_x + arrow_length // 2, center_y)
+                end = (center_x - arrow_length // 2, center_y)
+                head = [(center_x - arrow_length // 2 - arrow_head_size, center_y),
+                        (center_x - arrow_length // 2, center_y - arrow_head_size // 2),
+                        (center_x - arrow_length // 2, center_y + arrow_head_size // 2)]
+            pygame.draw.line(screen, (0, 0, 255), start, end, 3)  # Agente azul
+            pygame.draw.polygon(screen, (0, 0, 255), head)
     pygame.display.flip()
 
 async def update_loop():
     global epsilon
+    success_count = 0
+    steps_per_episode = []
+    agent_state = start_pos
+    draw_grid(agent_state)
+    await asyncio.sleep(MOVE_DELAY)
     for episode in range(EPISODES):
-        agent_states = [start_pos for _ in range(NUM_AGENTS)]
-        draw_grid(agent_states)
+        agent_state = start_pos  # Reinicia posição
+        draw_grid(agent_state)
         await asyncio.sleep(MOVE_DELAY)
-        while not all(grid[state[0]][state[1]] == 'G' for state in agent_states):
+        steps = 0
+        while grid[agent_state[0]][agent_state[1]] != 'G':
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     return
-            for agent_idx in range(NUM_AGENTS):
-                if grid[agent_states[agent_idx][0]][agent_states[agent_idx][1]] == 'G':
-                    continue
-                action = choose_action(agent_states[agent_idx], agent_idx)
-                valid, next_state = is_valid_move(agent_states[agent_idx], action)
-                reward = rewards[grid[next_state[0]][next_state[1]]]
-                row, col = agent_states[agent_idx]
-                next_row, next_col = next_state
-                action_idx = actions.index(action)
-                q_tables[agent_idx][row, col, action_idx] = (reward + GAMMA * np.max(q_tables[agent_idx][next_row, next_col]))
-                agent_states[agent_idx] = next_state
-            draw_grid(agent_states)
+            action = choose_action(agent_state)
+            valid, next_state = is_valid_move(agent_state, action)
+            reward = rewards[grid[next_state[0]][next_state[1]]]
+            row, col = agent_state
+            next_row, next_col = next_state
+            action_idx = actions.index(action)
+            q_table[row, col, action_idx] = (1 - ALPHA) * q_table[row, col, action_idx] + ALPHA * (reward + GAMMA * np.max(q_table[next_row, next_col]))
+            agent_state = next_state
+            draw_grid(agent_state)
             await asyncio.sleep(MOVE_DELAY)
-        epsilon = max(0.1, epsilon * 0.995)
+            steps += 1
+        steps_per_episode.append(steps)
+        if grid[agent_state[0]][agent_state[1]] == 'G':
+            success_count += 1
+        print(f'Episode {episode} completed in {steps} steps')
+        epsilon = max(0.1, epsilon * 0.995)  # Decaimento de epsilon
+
+    convergence_mean = sum(steps_per_episode) / len(steps_per_episode) if steps_per_episode else 0
+    success_rate = (success_count / EPISODES) * 100
+    print(f'Convergência média: {convergence_mean} passos')
+    print(f'Taxa de sucesso: {success_rate}%')
 
     draw_policy_grid()
     while True:
@@ -122,7 +128,6 @@ async def update_loop():
                 pygame.quit()
                 return
         await asyncio.sleep(0.1)
-
 
 async def main():
     setup()
